@@ -1,5 +1,5 @@
 - name: web app setup
-  hosts: webservers
+  hosts: windows
   gather_facts: no
   tasks:
     - name: ensure IIS and ASP.NET are installed
