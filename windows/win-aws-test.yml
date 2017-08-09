@@ -1,5 +1,5 @@
 - name: web app test
-  hosts: webservers
+  hosts: windows
   gather_facts: no
   tasks:
     - name: test that application responds properly
