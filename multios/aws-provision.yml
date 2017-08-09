@@ -31,7 +31,7 @@
       register: found_debian_amis
 
     - set_fact:
-        debian_ami_id: "{{ (found_rhel_amis.results | first).ami_id  }}"
+        debian_ami_id: "{{ (found_debian_amis.results | first).ami_id  }}"
 
     - name: ensure security group is present
       ec2_group:
@@ -88,7 +88,7 @@
         aws_region: "{{ target_aws_region }}"
         aws_access_key: "{{ aws_access_key }}"
         aws_secret_key: "{{ aws_secret_key }}"
-        image: "{{ rhel_ami_id }}"
+        image: "{{ debian_ami_id }}"
         instance_type: t2.micro
         group_id: "{{ sg_out.group_id }}"
         wait: yes
