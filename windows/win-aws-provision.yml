@@ -57,11 +57,13 @@
         wait_timeout: 500
         exact_count: 1
         count_tag:
-          Name: app-deploy-demo
-          Group: webserver
+          Name: win-app-deploy-demo
+          Group: windows
+          demo: fcmw
         instance_tags:
-          Name: app-deploy-demo
-          Group: webserver
+          Name: win-app-deploy-demo
+          Group: windows
+          demo: fcmw
         user_data: "{{ lookup('template', 'files/userdata.txt.j2') }}"
       register: ec2_result
 

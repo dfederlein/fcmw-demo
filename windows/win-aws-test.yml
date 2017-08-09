@@ -1,0 +1,12 @@
+- name: web app test
+  hosts: windows
+  gather_facts: no
+  tasks:
+    - name: test that application responds properly
+      uri:
+        url: http://{{ ansible_ssh_host}}/foo
+        return_content: yes
+      register: uri_out
+      delegate_to: localhost
+      until: uri_out.content | search("Hello from")
+      retries: 3

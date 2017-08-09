@@ -1,0 +1,119 @@
+- hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: find current RHEL in this region
+      ec2_ami_find:
+        aws_region: "{{ target_aws_region }}"
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        virtualization_type: hvm
+        owner: 309956199498
+        name: RHEL-7.3_HVM_GA*
+        no_result_action: fail
+        sort: name
+        sort_order: descending
+      register: found_rhel_amis
+
+    - set_fact:
+        rhel_ami_id: "{{ (found_rhel_amis.results | first).ami_id  }}"
+
+    - name: find current debian/wheezy in this region
+      ec2_ami_find:
+        aws_region: "{{ target_aws_region }}"
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        virtualization_type: hvm
+        owner: 969215163821
+        name: debian-wheezy-amd64-*
+        no_result_action: fail
+        sort: name
+        sort_order: descending
+      register: found_debian_amis
+
+    - set_fact:
+        debian_ami_id: "{{ (found_debian_amis.results | first).ami_id  }}"
+
+    - name: ensure security group is present
+      ec2_group:
+        aws_region: "{{ target_aws_region }}"
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        name: Linux Demo Web Servers
+        description: Inbound WinRM and RDP
+        rules:
+        - proto: tcp
+          from_port: 80
+          to_port: 80
+          cidr_ip: 0.0.0.0/0
+        - proto: tcp
+          from_port: "{{ ansible_port }}"
+          to_port: "{{ ansible_port }}"
+          cidr_ip: 0.0.0.0/0
+        - proto: tcp
+          from_port: 3389
+          to_port: 3389
+          cidr_ip: 0.0.0.0/0
+        rules_egress:
+        - proto: all
+          from_port: 0
+          to_port: 65535
+          cidr_ip: 0.0.0.0/0
+      register: sg_out
+
+    - name: ensure RHEL instances are running
+      ec2:
+        key_name: "{{ ec2_key_name }}"
+        aws_region: "{{ target_aws_region }}"
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        image: "{{ rhel_ami_id }}"
+        instance_type: t2.micro
+        group_id: "{{ sg_out.group_id }}"
+        wait: yes
+        wait_timeout: 500
+        exact_count: 1
+        count_tag:
+          Name: rhel-linux-demo
+          Group: web
+          demo: fcmw
+        instance_tags:
+          Name: rhel-linux-demo
+          Group: web
+          demo: fcmw
+      register: ec2_rhel_result
+
+    - name: ensure debian instances are running
+      ec2:
+        key_name: "{{ ec2_key_name }}"
+        aws_region: "{{ target_aws_region }}"
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        image: "{{ debian_ami_id }}"
+        instance_type: t2.micro
+        group_id: "{{ sg_out.group_id }}"
+        wait: yes
+        wait_timeout: 500
+        exact_count: 1
+        count_tag:
+          Name: debian-linux-demo
+          Group: web
+          demo: fcmw
+        instance_tags:
+          Name: debian-linux-demo
+          Group: web
+          demo: fcmw
+      register: ec2_debian_result
+
+    - name: wait for RHEL to answer on all hosts
+      wait_for:
+        port: "{{ ansible_port }}"
+        host: "{{ item.public_ip }}"
+        timeout: 300
+      with_items: "{{ ec2_rhel_result.tagged_instances }}"
+
+    - name: wait for debian/wheezy to answer on all hosts
+      wait_for:
+        port: "{{ ansible_port }}"
+        host: "{{ item.public_ip }}"
+        timeout: 300
+      with_items: "{{ ec2_debian_result.tagged_instances }}"
